@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import json
+import requests
 from pathlib import Path
 
 
@@ -69,6 +70,95 @@ except Exception as e:
     st.stop()
 
 
+
+
+
+def ask_ai(question, employee_profile, attrition_probability,
+                risk_category, predicted_income, metrics):
+    try:
+        log_metrics = metrics["logistic_regression"]
+        lin_metrics = metrics["linear_regression"]
+        employee_text = employee_profile.to_dict(orient="records")[0]
+
+        prompt = f"""
+You are an AI Manager Assistant inside an academic
+Predictive Analytics application for a fictional company
+called ABC Ltd.
+
+Your role is to help a manager INTERPRET predictive analytics
+outputs and think through managerial questions.
+
+IMPORTANT RULES:
+1. Do not claim that the model knows whether an employee will actually leave.
+2. Treat the attrition probability as a statistical estimate, not a certainty.
+3. Do not recommend firing, demotion, salary reduction, promotion, or employment action solely because of the prediction.
+4. Combine model evidence with employee context and managerial judgment.
+5. Distinguish between model predictions, employee profile, and managerial considerations.
+6. Do not invent facts not present in the employee profile.
+7. If unanswerable from supplied info, say so.
+8. Keep response practical for an MBA-level manager.
+9. Use simple language unless technical details are requested.
+
+CURRENT EMPLOYEE PROFILE:
+{employee_text}
+
+MODEL OUTPUTS:
+Attrition probability: {attrition_probability * 100:.2f}%
+Risk category: {risk_category}
+Predicted monthly income: ₹{predicted_income:,.0f}
+
+LOGISTIC REGRESSION PERFORMANCE:
+Accuracy: {log_metrics["accuracy"]:.3f}
+Precision: {log_metrics["precision"]:.3f}
+Recall: {log_metrics["recall"]:.3f}
+F1: {log_metrics["f1_score"]:.3f}
+ROC-AUC: {log_metrics["roc_auc"]:.3f}
+
+LINEAR REGRESSION PERFORMANCE:
+R²: {lin_metrics["r2"]:.3f}
+MAE: ₹{lin_metrics["mae"]:,.0f}
+RMSE: ₹{lin_metrics["rmse"]:,.0f}
+
+MANAGER'S QUESTION:
+{question}
+
+Answer the manager's question structured using:
+### What the model says
+### What it may mean
+### What the manager should consider
+### Important limitation
+"""
+
+        # Google Apps Script Web App URL you provided
+        script_url = "https://script.google.com/macros/s/AKfycbwnKl9AInUGOONNVU-swAYgsDEBh6MtPh30jzQK4iYJTO6SuwqXA2wDO9RIxz7pGaw/exec"
+        
+        payload = {"prompt": prompt}
+        
+        # Send POST request to Google Apps Script
+        response = requests.post(script_url, json=payload, timeout=30)
+        
+        if response.status_code != 200:
+            return f"Error from proxy server: HTTP {response.status_code}"
+            
+        result_json = response.json()
+        
+        # Extract text from standard Gemini API JSON response structure
+        try:
+            answer_text = result_json["candidates"][0]["content"]["parts"][0]["text"]
+            return answer_text
+        except KeyError:
+            return f"Unexpected response format from script: {json.dumps(result_json)}"
+
+    except Exception as e:
+        return f"""
+### Gemini could not generate a response
+
+The application encountered the following issue:
+`{str(e)}`
+
+The predictive models are still available and their predictions are unaffected.
+"""
+        
 # ============================================================
 # GEMINI FUNCTION
 # ============================================================
