@@ -923,7 +923,7 @@ with tab4:
                 "Gemini is analysing the employee profile..."
             ):
 
-                answer = ask_gemini(
+                answer = ask_ai(
                     final_question,
                     input_data,
                     attrition_probability,
