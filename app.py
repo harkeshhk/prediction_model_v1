@@ -138,30 +138,44 @@ Answer the manager's question structured using:
         payload = {"prompt": prompt}
         
         # Send POST request to Google Apps Script
-        response = requests.post(script_url, json=payload, timeout=30)
+        response = requests.post(script_url, json=payload, timeout=120)
         
-        if response.status_code != 200:
+if response.status_code != 200:
             return f"Error from Apps Script server: HTTP {response.status_code}"
             
-        # 1. Grab raw text (handles text/plain, text/html, or application/json headers seamlessly)
         raw_output = response.text.strip()
         
-        # 2. Safely parse the text into a JSON object
+        # Check if Google returned an HTML page instead of JSON
+        if raw_output.startswith("<!DOCTYPE") or "<html" in raw_output.lower():
+            return f"""
+### Google Apps Script Authorization Error
+
+The script URL returned an HTML page (likely a Google login or security wall) instead of JSON data. 
+
+**How to fix this in Google Apps Script:**
+1. Go back to your Apps Script project.
+2. Click **Deploy** > **Manage deployments**.
+3. Edit your active deployment (or create a **New deployment**).
+4. Ensure **Execute as** is set to **Me**.
+5. Ensure **Who has access** is strictly set to **Anyone** (not "Anyone with a Google account" or "Only myself").
+6. Copy the updated Web App URL and replace it in your code.
+"""
+
+        # Parse standard JSON response
         try:
             result_json = json.loads(raw_output)
         except json.JSONDecodeError:
-            return f"### Script Output Error\nCould not parse response as JSON. Raw output received:\n```text\n{raw_output[:500]}\n```"
+            return f"### Parsing Error\nCould not parse response as JSON. Raw output:\n```text\n{raw_output[:500]}\n```"
             
-        # 3. Handle potential error messages returned inside the script JSON
         if "error" in result_json:
             return f"### Gemini Execution Error\n`{result_json['error']}`"
             
-        # 4. Extract text from standard Gemini API JSON response structure
+        # Extract text from standard Gemini API JSON response structure
         try:
             answer_text = result_json["candidates"][0]["content"]["parts"][0]["text"]
             return answer_text
         except KeyError:
-            return f"Unexpected JSON data structure from script: {json.dumps(result_json)}"
+            return f"Unexpected JSON structure from script: {json.dumps(result_json)}"
 
     except Exception as e:
         return f"""
@@ -171,7 +185,8 @@ The application encountered the following issue:
 `{str(e)}`
 
 The predictive models are still available and their predictions are unaffected.
-"""        
+"""
+        
 # ============================================================
 # GEMINI FUNCTION
 # ============================================================
