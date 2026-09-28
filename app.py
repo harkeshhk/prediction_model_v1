@@ -984,7 +984,7 @@ with tab4:
                 "Grok is analysing the employee profile..."
             ):
 
-                answer = ask_grok(
+                answer = ask_gemini(
                     final_question,
                     input_data,
                     attrition_probability,
