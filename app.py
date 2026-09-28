@@ -69,6 +69,157 @@ except Exception as e:
     st.stop()
 
 
+
+def ask_grok(
+    question,
+    employee_profile,
+    attrition_probability,
+    risk_category,
+    predicted_income,
+    metrics
+):
+    try:
+        from openai import OpenAI
+
+        api_key = st.secrets.get("XAI_API_KEY")
+
+        if not api_key:
+            return (
+                "Grok API key is not configured. "
+                "Please add XAI_API_KEY to Streamlit secrets."
+            )
+
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.x.ai/v1"
+        )
+
+        log_metrics = metrics["logistic_regression"]
+        lin_metrics = metrics["linear_regression"]
+
+        employee_text = employee_profile.to_dict(
+            orient="records"
+        )[0]
+
+        prompt = f"""
+You are an AI Manager Assistant inside an academic
+Predictive Analytics application for a fictional company
+called ABC Ltd.
+
+Your role is to help a manager INTERPRET predictive
+analytics outputs and think through managerial questions.
+
+IMPORTANT RULES:
+
+1. Do not claim that the model knows whether an employee
+   will actually leave.
+
+2. Treat the attrition probability as a statistical estimate,
+   not a certainty.
+
+3. Do not recommend firing, demotion, salary reduction,
+   promotion, or any other employment action solely because
+   of the prediction.
+
+4. Encourage the manager to combine model evidence with
+   employee context, managerial judgement, and appropriate
+   HR processes.
+
+5. Clearly distinguish between:
+   - what the model predicts,
+   - what the employee profile shows,
+   - and managerial considerations.
+
+6. Do not invent facts that are not present in the supplied
+   employee profile.
+
+7. If the question cannot be answered from the supplied
+   information, say so.
+
+8. Keep the response practical and suitable for an
+   MBA-level manager.
+
+9. Use simple language unless technical detail is requested.
+
+CURRENT EMPLOYEE PROFILE:
+{employee_text}
+
+MODEL OUTPUTS:
+
+Attrition probability:
+{attrition_probability * 100:.2f}%
+
+Risk category:
+{risk_category}
+
+Predicted monthly income:
+₹{predicted_income:,.0f}
+
+LOGISTIC REGRESSION PERFORMANCE:
+
+Accuracy:
+{log_metrics["accuracy"]:.3f}
+
+Precision:
+{log_metrics["precision"]:.3f}
+
+Recall:
+{log_metrics["recall"]:.3f}
+
+F1:
+{log_metrics["f1_score"]:.3f}
+
+ROC-AUC:
+{log_metrics["roc_auc"]:.3f}
+
+LINEAR REGRESSION PERFORMANCE:
+
+R²:
+{lin_metrics["r2"]:.3f}
+
+MAE:
+₹{lin_metrics["mae"]:,.0f}
+
+RMSE:
+₹{lin_metrics["rmse"]:,.0f}
+
+MANAGER'S QUESTION:
+{question}
+
+Answer the manager's question.
+
+Where useful, structure the response using:
+
+### What the model says
+
+### What it may mean
+
+### What the manager should consider
+
+### Important limitation
+
+Do not make employment decisions on behalf of the manager.
+"""
+
+        response = client.responses.create(
+            model="grok-4.7",
+            input=prompt
+        )
+
+        return response.output_text
+
+    except Exception as e:
+        return f"""
+### Grok could not generate a response
+
+The application encountered the following issue:
+
+`{str(e)}`
+
+The predictive models are still available and
+their predictions are unaffected.
+"""
+        
 # ============================================================
 # GEMINI FUNCTION
 # ============================================================
@@ -734,7 +885,7 @@ with tab3:
 
 
 # ============================================================
-# TAB 4 — GEMINI
+# TAB 4 — Grok
 # ============================================================
 
 with tab4:
@@ -747,7 +898,7 @@ with tab4:
         model predictions, or managerial interpretation.
 
         **The predictive models generate the numerical predictions;
-        Gemini provides natural-language interpretation.**
+        Grok provides natural-language interpretation.**
         """
     )
 
@@ -809,7 +960,7 @@ with tab4:
     )
 
     if st.button(
-        "Ask Gemini",
+        "Ask Grok",
         type="primary"
     ):
 
@@ -830,10 +981,10 @@ with tab4:
         else:
 
             with st.spinner(
-                "Gemini is analysing the employee profile..."
+                "Grok is analysing the employee profile..."
             ):
 
-                answer = ask_gemini(
+                answer = ask_grok(
                     final_question,
                     input_data,
                     attrition_probability,
@@ -842,7 +993,7 @@ with tab4:
                     metrics
                 )
 
-            st.markdown("### Gemini's Response")
+            st.markdown("### AI's Response")
 
             st.markdown(answer)
 
