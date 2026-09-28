@@ -138,7 +138,7 @@ Answer the manager's question structured using:
         payload = {"prompt": prompt}
         
         # Send POST request to Google Apps Script
-        response = requests.post(script_url, json=payload, timeout=120)
+        response = requests.post(script_url, json=payload, timeout=60)
         
         if response.status_code != 200:
             return f"Error from Apps Script server: HTTP {response.status_code}"
