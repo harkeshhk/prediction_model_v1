@@ -133,7 +133,7 @@ Answer the manager's question structured using:
 """
 
         # Google Apps Script Web App URL
-        script_url = "https://script.google.com/macros/s/AKfycbxdtH833H06JXBQN8BvZfOi7jMutlcZGEtqbDVFeYOu2y9SNBPmzPiEOtKlzMLfl5x_/exec"
+        script_url = "https://script.google.com/macros/s/AKfycbyZb_cmkX444lQZOmVJ9meNra_9VafV5IQlX4YB09k/dev"
         
         payload = {"prompt": prompt}
         
