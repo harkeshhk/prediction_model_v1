@@ -69,30 +69,26 @@ except Exception as e:
     st.stop()
 
 
+# ============================================================
+# GEMINI FUNCTION
+# ============================================================
 
-def ask_grok(
-    question,
-    employee_profile,
-    attrition_probability,
-    risk_category,
-    predicted_income,
-    metrics
-):
+def ask_gemini(question, employee_profile, attrition_probability,
+               risk_category, predicted_income, metrics):
+
     try:
-        from openai import OpenAI
 
-        api_key = st.secrets.get("XAI_API_KEY")
+        from google import genai
+
+        api_key = st.secrets.get("GEMINI_API_KEY")
 
         if not api_key:
             return (
-                "Grok API key is not configured. "
-                "Please add XAI_API_KEY to Streamlit secrets."
+                "Gemini API key is not configured. "
+                "Please add GEMINI_API_KEY to Streamlit secrets."
             )
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.x.ai/v1"
-        )
+        client = genai.Client(api_key=api_key)
 
         log_metrics = metrics["logistic_regression"]
         lin_metrics = metrics["linear_regression"]
@@ -106,40 +102,33 @@ You are an AI Manager Assistant inside an academic
 Predictive Analytics application for a fictional company
 called ABC Ltd.
 
-Your role is to help a manager INTERPRET predictive
-analytics outputs and think through managerial questions.
+Your role is to help a manager INTERPRET predictive analytics
+outputs and think through managerial questions.
 
 IMPORTANT RULES:
 
 1. Do not claim that the model knows whether an employee
    will actually leave.
-
 2. Treat the attrition probability as a statistical estimate,
    not a certainty.
-
 3. Do not recommend firing, demotion, salary reduction,
    promotion, or any other employment action solely because
    of the prediction.
-
 4. Encourage the manager to combine model evidence with
    employee context, managerial judgement, and appropriate
    HR processes.
-
 5. Clearly distinguish between:
    - what the model predicts,
    - what the employee profile shows,
    - and managerial considerations.
-
 6. Do not invent facts that are not present in the supplied
    employee profile.
-
 7. If the question cannot be answered from the supplied
    information, say so.
-
-8. Keep the response practical and suitable for an
-   MBA-level manager.
-
-9. Use simple language unless technical detail is requested.
+8. Keep the response practical and suitable for an MBA-level
+   manager.
+9. Use simple language unless the manager asks for technical
+   detail.
 
 CURRENT EMPLOYEE PROFILE:
 {employee_text}
@@ -191,127 +180,33 @@ Answer the manager's question.
 Where useful, structure the response using:
 
 ### What the model says
-
 ### What it may mean
-
 ### What the manager should consider
-
 ### Important limitation
 
 Do not make employment decisions on behalf of the manager.
 """
 
-        response = client.responses.create(
-            model="grok-4.7",
-            input=prompt
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=prompt
         )
 
-        return response.output_text
+        return response.text
 
     except Exception as e:
-        return f"""
-### Grok could not generate a response
 
-The application encountered the following issue:
-
-`{str(e)}`
-
-The predictive models are still available and
-their predictions are unaffected.
-"""
-        
-# ============================================================
-# GEMINI FUNCTION
-# ============================================================
-
-import requests
-import json
-
-def ask_gemini(question, employee_profile, attrition_probability,
-                risk_category, predicted_income, metrics):
-    try:
-        log_metrics = metrics["logistic_regression"]
-        lin_metrics = metrics["linear_regression"]
-        employee_text = employee_profile.to_dict(orient="records")[0]
-
-        prompt = f"""
-You are an AI Manager Assistant inside an academic
-Predictive Analytics application for a fictional company
-called ABC Ltd.
-
-Your role is to help a manager INTERPRET predictive analytics
-outputs and think through managerial questions.
-
-IMPORTANT RULES:
-1. Do not claim that the model knows whether an employee will actually leave.
-2. Treat the attrition probability as a statistical estimate, not a certainty.
-3. Do not recommend firing, demotion, salary reduction, promotion, or employment action solely because of the prediction.
-4. Combine model evidence with employee context and managerial judgment.
-5. Distinguish between model predictions, employee profile, and managerial considerations.
-6. Do not invent facts not present in the employee profile.
-7. If unanswerable from supplied info, say so.
-8. Keep response practical for an MBA-level manager.
-9. Use simple language unless technical details are requested.
-
-CURRENT EMPLOYEE PROFILE:
-{employee_text}
-
-MODEL OUTPUTS:
-Attrition probability: {attrition_probability * 100:.2f}%
-Risk category: {risk_category}
-Predicted monthly income: ₹{predicted_income:,.0f}
-
-LOGISTIC REGRESSION PERFORMANCE:
-Accuracy: {log_metrics["accuracy"]:.3f}
-Precision: {log_metrics["precision"]:.3f}
-Recall: {log_metrics["recall"]:.3f}
-F1: {log_metrics["f1_score"]:.3f}
-ROC-AUC: {log_metrics["roc_auc"]:.3f}
-
-LINEAR REGRESSION PERFORMANCE:
-R²: {lin_metrics["r2"]:.3f}
-MAE: ₹{lin_metrics["mae"]:,.0f}
-RMSE: ₹{lin_metrics["rmse"]:,.0f}
-
-MANAGER'S QUESTION:
-{question}
-
-Answer the manager's question structured using:
-### What the model says
-### What it may mean
-### What the manager should consider
-### Important limitation
-"""
-
-        # Google Apps Script Web App URL you provided
-        script_url = "https://script.google.com/macros/s/AKfycbwnKl9AInUGOONNVU-swAYgsDEBh6MtPh30jzQK4iYJTO6SuwqXA2wDO9RIxz7pGaw/exec"
-        
-        payload = {"prompt": prompt}
-        
-        # Send POST request to Google Apps Script
-        response = requests.post(script_url, json=payload, timeout=30)
-        
-        if response.status_code != 200:
-            return f"Error from proxy server: HTTP {response.status_code}"
-            
-        result_json = response.json()
-        
-        # Extract text from standard Gemini API JSON response structure
-        try:
-            answer_text = result_json["candidates"][0]["content"]["parts"][0]["text"]
-            return answer_text
-        except KeyError:
-            return f"Unexpected response format from script: {json.dumps(result_json)}"
-
-    except Exception as e:
         return f"""
 ### Gemini could not generate a response
 
 The application encountered the following issue:
+
 `{str(e)}`
 
-The predictive models are still available and their predictions are unaffected.
+The predictive models are still available and their
+predictions are unaffected.
 """
+
 
 # ============================================================
 # HEADER
@@ -839,7 +734,7 @@ with tab3:
 
 
 # ============================================================
-# TAB 4 — Grok
+# TAB 4 — GEMINI
 # ============================================================
 
 with tab4:
@@ -852,7 +747,7 @@ with tab4:
         model predictions, or managerial interpretation.
 
         **The predictive models generate the numerical predictions;
-        Grok provides natural-language interpretation.**
+        Gemini provides natural-language interpretation.**
         """
     )
 
@@ -914,7 +809,7 @@ with tab4:
     )
 
     if st.button(
-        "Ask Grok",
+        "Ask Gemini",
         type="primary"
     ):
 
@@ -935,7 +830,7 @@ with tab4:
         else:
 
             with st.spinner(
-                "Grok is analysing the employee profile..."
+                "Gemini is analysing the employee profile..."
             ):
 
                 answer = ask_gemini(
@@ -947,7 +842,7 @@ with tab4:
                     metrics
                 )
 
-            st.markdown("### AI's Response")
+            st.markdown("### Gemini's Response")
 
             st.markdown(answer)
 
