@@ -12,7 +12,7 @@ from pathlib import Path
 # ============================================================
 
 st.set_page_config(
-    page_title="HK-Labs Ltd. Predictive Analytics",
+    page_title="Z-Fire Ltd. Predictive Analytics",
     page_icon="📊",
     layout="wide"
 )
@@ -86,7 +86,7 @@ def ask_ai(question, employee_profile, attrition_probability,
         prompt = f"""
 You are an AI Manager Assistant inside an academic
 Predictive Analytics application for a fictional company
-called HK-Labs Ltd.
+called Z-Fire Ltd.
 
 Your role is to help a manager INTERPRET predictive analytics
 outputs and think through managerial questions.
@@ -210,7 +210,7 @@ def ask_gemini(question, employee_profile, attrition_probability,
         prompt = f"""
 You are an AI Manager Assistant inside an academic
 Predictive Analytics application for a fictional company
-called HK-Labs Ltd.
+called Z-Fire Ltd.
 
 Your role is to help a manager INTERPRET predictive analytics
 outputs and think through managerial questions.
@@ -322,7 +322,7 @@ predictions are unaffected.
 # HEADER
 # ============================================================
 
-st.title("📊 HK-Labs Ltd. Predictive Analytics Dashboard")
+st.title("📊 Z-Fire Ltd. Predictive Analytics Dashboard")
 
 st.markdown(
     """
@@ -964,7 +964,7 @@ with tab4:
 st.divider()
 
 st.caption(
-    "HK-Labs Ltd. Predictive Analytics | "
+    "Z-Fire Ltd. Predictive Analytics | "
     "Logistic Regression + Linear Regression + Generative AI | "
     "Managerial Decision Support"
 )
