@@ -133,22 +133,25 @@ Answer the manager's question structured using:
 """
 
         # Google Apps Script Web App URL
-        script_url = "https://script.google.com/macros/s/AKfycbycJ0M_zAECE-YYNGkBYLrJIw0J3fivU8qraPpHbx3CgZ6IyFXsjcJVB4pgsgilfeeE/exec"
+        script_url = "https://script.google.com/macros/s/AKfycbxt17bDy6pMLVyEpONTI-o9wH67sqzB6WWitkUth5i0dZP5B8WXk0yxJehNQ5kJm5k-/exec"
         
-        payload = {"prompt": prompt}
+        # Pack data neatly into URL parameters for a GET request
+        params = {
+            "call": "askGemini",
+            "prompt": prompt
+        }
         
-        # Send POST request to Google Apps Script
-        response = requests.post(script_url, json=payload, timeout=60)
+        # Send GET request instead of POST to completely avoid redirect bugs
+        response = requests.get(script_url, params=params, timeout=60)
         
         if response.status_code != 200:
             return f"Error from Apps Script server: HTTP {response.status_code}"
             
         raw_output = response.text.strip()
         
-        # Check if Google returned an HTML page instead of JSON
+        # Check if Google returned an HTML login/error page
         if raw_output.startswith("<!DOCTYPE") or "<html" in raw_output.lower():
-            return raw_output
-            
+            return f"### Google Authorization/HTML Error:\n{raw_output[:300]}"
 
         # Parse standard JSON response
         try:
