@@ -133,7 +133,7 @@ Answer the manager's question structured using:
 """
 
         # Google Apps Script Web App URL
-        script_url = "https://script.google.com/macros/s/AKfycbx1nrFM9GQ8OgoSlDWlQ1WEbtL3g4EJI8ySrZ24R3yQD1xar3frQDnU4zxap_euFq-_/exec"
+        script_url = "https://script.google.com/macros/s/AKfycbwqQH3LYBYV2KddQ4ODmoLiVYBjwGow_3_d3aA0zFFZepNlh3CQ_bVtQTkPrWLdEJWU/exec"
         
         # Pack data neatly into URL parameters for a GET request
         params = {
