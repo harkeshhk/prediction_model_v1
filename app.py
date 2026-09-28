@@ -73,7 +73,10 @@ except Exception as e:
 
 
 
-def ask_ai(question, employee_profile, attrition_probability,
+import requests
+import json
+
+def ask_gemini(question, employee_profile, attrition_probability,
                 risk_category, predicted_income, metrics):
     try:
         log_metrics = metrics["logistic_regression"]
@@ -129,7 +132,7 @@ Answer the manager's question structured using:
 ### Important limitation
 """
 
-        # Google Apps Script Web App URL you provided
+        # Google Apps Script Web App URL
         script_url = "https://script.google.com/macros/s/AKfycbwnKl9AInUGOONNVU-swAYgsDEBh6MtPh30jzQK4iYJTO6SuwqXA2wDO9RIxz7pGaw/exec"
         
         payload = {"prompt": prompt}
@@ -138,16 +141,27 @@ Answer the manager's question structured using:
         response = requests.post(script_url, json=payload, timeout=30)
         
         if response.status_code != 200:
-            return f"Error from proxy server: HTTP {response.status_code}"
+            return f"Error from Apps Script server: HTTP {response.status_code}"
             
-        result_json = response.json()
+        # 1. Grab raw text (handles text/plain, text/html, or application/json headers seamlessly)
+        raw_output = response.text.strip()
         
-        # Extract text from standard Gemini API JSON response structure
+        # 2. Safely parse the text into a JSON object
+        try:
+            result_json = json.loads(raw_output)
+        except json.JSONDecodeError:
+            return f"### Script Output Error\nCould not parse response as JSON. Raw output received:\n```text\n{raw_output[:500]}\n```"
+            
+        # 3. Handle potential error messages returned inside the script JSON
+        if "error" in result_json:
+            return f"### Gemini Execution Error\n`{result_json['error']}`"
+            
+        # 4. Extract text from standard Gemini API JSON response structure
         try:
             answer_text = result_json["candidates"][0]["content"]["parts"][0]["text"]
             return answer_text
         except KeyError:
-            return f"Unexpected response format from script: {json.dumps(result_json)}"
+            return f"Unexpected JSON data structure from script: {json.dumps(result_json)}"
 
     except Exception as e:
         return f"""
@@ -157,8 +171,7 @@ The application encountered the following issue:
 `{str(e)}`
 
 The predictive models are still available and their predictions are unaffected.
-"""
-        
+"""        
 # ============================================================
 # GEMINI FUNCTION
 # ============================================================
