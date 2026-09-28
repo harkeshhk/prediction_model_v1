@@ -327,9 +327,9 @@ st.title("📊 Z-Fire Ltd. Predictive Analytics Dashboard")
 st.markdown(
     """
 ### Predictive Analytics & Managerial Decision Support
-#### Model crafted by Group 03
-##### Aiswarya, Harkesh, Kalpesh, Sakshi, Santhossh, Siddhant, Suman
-
+-------------------------------------------------------------------
+Model crafted by **Group 03**: Aiswarya, Harkesh, Kalpesh, Sakshi, Santhossh, Siddhant, Suman
+Under the guidance of **Prof. Janak Suthar**
 --------------------------------------------------------------------
 
 This application combines:
