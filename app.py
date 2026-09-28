@@ -330,7 +330,7 @@ st.markdown(
 #### Model crafted by Group 03
 ##### Aiswarya, Harkesh, Kalpesh, Sakshi, Santhossh, Siddhant, Suman
 
-
+--------------------------------------------------------------------
 
 This application combines:
 
