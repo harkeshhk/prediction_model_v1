@@ -54,7 +54,7 @@ def load_json_files():
 
 
 # ============================================================
-# TRY TO LOAD MODELS
+# LOAD MODELS
 # ============================================================
 
 try:
@@ -65,16 +65,147 @@ try:
 except Exception as e:
 
     st.error("The application could not load the trained models.")
-
     st.code(str(e))
-
-    st.info(
-        "Please make sure the four files are present inside the "
-        "'models' folder and that the scikit-learn version used "
-        "to load the models matches the version used during training."
-    )
-
     st.stop()
+
+
+# ============================================================
+# GEMINI FUNCTION
+# ============================================================
+
+def ask_gemini(question, employee_profile, attrition_probability,
+               risk_category, predicted_income, metrics):
+
+    try:
+
+        from google import genai
+
+        api_key = st.secrets.get("GEMINI_API_KEY")
+
+        if not api_key:
+            return (
+                "Gemini API key is not configured. "
+                "Please add GEMINI_API_KEY to Streamlit secrets."
+            )
+
+        client = genai.Client(api_key=api_key)
+
+        log_metrics = metrics["logistic_regression"]
+        lin_metrics = metrics["linear_regression"]
+
+        employee_text = employee_profile.to_dict(
+            orient="records"
+        )[0]
+
+        prompt = f"""
+You are an AI Manager Assistant inside an academic
+Predictive Analytics application for a fictional company
+called ABC Ltd.
+
+Your role is to help a manager INTERPRET predictive analytics
+outputs and think through managerial questions.
+
+IMPORTANT RULES:
+
+1. Do not claim that the model knows whether an employee
+   will actually leave.
+2. Treat the attrition probability as a statistical estimate,
+   not a certainty.
+3. Do not recommend firing, demotion, salary reduction,
+   promotion, or any other employment action solely because
+   of the prediction.
+4. Encourage the manager to combine model evidence with
+   employee context, managerial judgement, and appropriate
+   HR processes.
+5. Clearly distinguish between:
+   - what the model predicts,
+   - what the employee profile shows,
+   - and managerial considerations.
+6. Do not invent facts that are not present in the supplied
+   employee profile.
+7. If the question cannot be answered from the supplied
+   information, say so.
+8. Keep the response practical and suitable for an MBA-level
+   manager.
+9. Use simple language unless the manager asks for technical
+   detail.
+
+CURRENT EMPLOYEE PROFILE:
+{employee_text}
+
+MODEL OUTPUTS:
+
+Attrition probability:
+{attrition_probability * 100:.2f}%
+
+Risk category:
+{risk_category}
+
+Predicted monthly income:
+₹{predicted_income:,.0f}
+
+LOGISTIC REGRESSION PERFORMANCE:
+
+Accuracy:
+{log_metrics["accuracy"]:.3f}
+
+Precision:
+{log_metrics["precision"]:.3f}
+
+Recall:
+{log_metrics["recall"]:.3f}
+
+F1:
+{log_metrics["f1_score"]:.3f}
+
+ROC-AUC:
+{log_metrics["roc_auc"]:.3f}
+
+LINEAR REGRESSION PERFORMANCE:
+
+R²:
+{lin_metrics["r2"]:.3f}
+
+MAE:
+₹{lin_metrics["mae"]:,.0f}
+
+RMSE:
+₹{lin_metrics["rmse"]:,.0f}
+
+MANAGER'S QUESTION:
+{question}
+
+Answer the manager's question.
+
+Where useful, structure the response using:
+
+### What the model says
+### What it may mean
+### What the manager should consider
+### Important limitation
+
+Do not make employment decisions on behalf of the manager.
+"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        return response.text
+
+    except Exception as e:
+
+        return f"""
+### Gemini could not generate a response
+
+The application encountered the following issue:
+
+`{str(e)}`
+
+The predictive models are still available and their
+predictions are unaffected.
+"""
 
 
 # ============================================================
@@ -85,16 +216,14 @@ st.title("📊 ABC Ltd. Predictive Analytics Dashboard")
 
 st.markdown(
     """
-    ### Predictive Analytics & Managerial Decision Support
+### Predictive Analytics & Managerial Decision Support
 
-    This application uses two machine-learning models:
+This application combines:
 
-    - **Logistic Regression** → predicts employee attrition risk
-    - **Linear Regression** → predicts estimated monthly income
-
-    The predictions are intended as **decision-support information**
-    and should be interpreted together with managerial judgement.
-    """
+- **Logistic Regression** → employee attrition prediction
+- **Linear Regression** → estimated monthly income
+- **Generative AI** → natural-language managerial interpretation
+"""
 )
 
 st.divider()
@@ -106,22 +235,19 @@ st.divider()
 
 st.sidebar.header("👤 Employee Profile")
 
-st.sidebar.markdown(
-    "Enter the employee information below to generate predictions."
+st.sidebar.caption(
+    "Enter employee information to generate predictions."
 )
 
 
 # ------------------------------------------------------------
-# Employee demographics
+# DEMOGRAPHICS
 # ------------------------------------------------------------
 
 st.sidebar.subheader("Demographics")
 
 age = st.sidebar.slider(
-    "Age",
-    min_value=18,
-    max_value=60,
-    value=35
+    "Age", 18, 60, 35
 )
 
 gender = st.sidebar.selectbox(
@@ -156,7 +282,7 @@ education_field = st.sidebar.selectbox(
 
 
 # ------------------------------------------------------------
-# Job information
+# JOB INFORMATION
 # ------------------------------------------------------------
 
 st.sidebar.subheader("Job Information")
@@ -202,21 +328,17 @@ business_travel = st.sidebar.selectbox(
 
 distance_from_home = st.sidebar.slider(
     "Distance From Home",
-    min_value=1,
-    max_value=30,
-    value=10
+    1, 30, 10
 )
 
 num_companies_worked = st.sidebar.slider(
     "Number of Companies Worked",
-    min_value=0,
-    max_value=10,
-    value=2
+    0, 10, 2
 )
 
 
 # ------------------------------------------------------------
-# Job satisfaction and environment
+# EMPLOYEE EXPERIENCE
 # ------------------------------------------------------------
 
 st.sidebar.subheader("Employee Experience")
@@ -258,51 +380,39 @@ overtime = st.sidebar.selectbox(
 
 
 # ------------------------------------------------------------
-# Career information
+# CAREER
 # ------------------------------------------------------------
 
 st.sidebar.subheader("Career Information")
 
 total_working_years = st.sidebar.slider(
     "Total Working Years",
-    min_value=0,
-    max_value=40,
-    value=10
+    0, 40, 10
 )
 
 years_at_company = st.sidebar.slider(
     "Years at Company",
-    min_value=0,
-    max_value=40,
-    value=5
+    0, 40, 5
 )
 
 years_current_role = st.sidebar.slider(
     "Years in Current Role",
-    min_value=0,
-    max_value=20,
-    value=3
+    0, 20, 3
 )
 
 years_since_promotion = st.sidebar.slider(
     "Years Since Last Promotion",
-    min_value=0,
-    max_value=15,
-    value=2
+    0, 15, 2
 )
 
 years_with_manager = st.sidebar.slider(
     "Years With Current Manager",
-    min_value=0,
-    max_value=20,
-    value=3
+    0, 20, 3
 )
 
 training_times = st.sidebar.slider(
     "Training Times Last Year",
-    min_value=0,
-    max_value=10,
-    value=3
+    0, 10, 3
 )
 
 stock_option_level = st.sidebar.selectbox(
@@ -313,7 +423,7 @@ stock_option_level = st.sidebar.selectbox(
 
 
 # ------------------------------------------------------------
-# Compensation
+# COMPENSATION
 # ------------------------------------------------------------
 
 st.sidebar.subheader("Compensation & Performance")
@@ -341,9 +451,7 @@ monthly_rate = st.sidebar.number_input(
 
 percent_salary_hike = st.sidebar.slider(
     "Percent Salary Hike",
-    min_value=10,
-    max_value=30,
-    value=15
+    10, 30, 15
 )
 
 performance_rating = st.sidebar.selectbox(
@@ -391,18 +499,45 @@ input_data = pd.DataFrame({
 
 
 # ============================================================
-# MAIN TABS
+# PREDICTIONS
 # ============================================================
 
-tab1, tab2, tab3 = st.tabs([
+attrition_probability = logistic_model.predict_proba(
+    input_data
+)[0][1]
+
+attrition_prediction = logistic_model.predict(
+    input_data
+)[0]
+
+predicted_income = linear_model.predict(
+    input_data
+)[0]
+
+risk_percentage = attrition_probability * 100
+
+if risk_percentage < 30:
+    risk_category = "Low Risk"
+elif risk_percentage < 60:
+    risk_category = "Medium Risk"
+else:
+    risk_category = "High Risk"
+
+
+# ============================================================
+# TABS
+# ============================================================
+
+tab1, tab2, tab3, tab4 = st.tabs([
     "🔮 Predictions",
     "📈 Model Validation",
-    "📋 Employee Profile"
+    "📋 Employee Profile",
+    "🤖 AI Manager Assistant"
 ])
 
 
 # ============================================================
-# TAB 1 — PREDICTIONS
+# TAB 1
 # ============================================================
 
 with tab1:
@@ -411,51 +546,19 @@ with tab1:
 
     col1, col2, col3 = st.columns(3)
 
-    # --------------------------------------------------------
-    # Logistic prediction
-    # --------------------------------------------------------
-
-    attrition_probability = logistic_model.predict_proba(
-        input_data
-    )[0][1]
-
-    attrition_prediction = logistic_model.predict(
-        input_data
-    )[0]
-
-    risk_percentage = attrition_probability * 100
-
-    if risk_percentage < 30:
-        risk_category = "Low Risk"
-    elif risk_percentage < 60:
-        risk_category = "Medium Risk"
-    else:
-        risk_category = "High Risk"
-
     with col1:
-
         st.metric(
             "Attrition Probability",
             f"{risk_percentage:.1f}%"
         )
 
     with col2:
-
         st.metric(
             "Risk Category",
             risk_category
         )
 
-    # --------------------------------------------------------
-    # Linear prediction
-    # --------------------------------------------------------
-
-    predicted_income = linear_model.predict(
-        input_data
-    )[0]
-
     with col3:
-
         st.metric(
             "Predicted Monthly Income",
             f"₹{predicted_income:,.0f}"
@@ -463,49 +566,38 @@ with tab1:
 
     st.divider()
 
-    # --------------------------------------------------------
-    # Interpretation
-    # --------------------------------------------------------
-
-    st.subheader("Model Interpretation")
-
     if attrition_prediction == 1:
 
         st.warning(
-            "The logistic regression model classifies this employee "
-            "as having a higher likelihood of attrition."
+            "The model classifies this employee as having "
+            "a higher likelihood of attrition."
         )
 
     else:
 
         st.success(
-            "The logistic regression model classifies this employee "
-            "as having a lower likelihood of attrition."
+            "The model classifies this employee as having "
+            "a lower likelihood of attrition."
         )
 
     st.info(
         f"The estimated attrition probability is "
         f"**{risk_percentage:.1f}%**. "
-        "This is a statistical prediction and should not be treated "
-        "as a standalone HR decision."
+        "This is a statistical estimate rather than a certainty."
     )
-
-    # --------------------------------------------------------
-    # What-if analysis
-    # --------------------------------------------------------
 
     st.divider()
 
     st.subheader("🔄 What-If Analysis")
 
     st.write(
-        "Change selected employee conditions and compare the "
-        "resulting attrition probability."
+        "Change selected conditions to see how the model's "
+        "attrition probability changes."
     )
 
-    whatif_col1, whatif_col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-    with whatif_col1:
+    with col1:
 
         whatif_overtime = st.selectbox(
             "What-if OverTime",
@@ -519,13 +611,12 @@ with tab1:
             index=job_satisfaction - 1
         )
 
-    with whatif_col2:
+    with col2:
 
         whatif_distance = st.slider(
             "What-if Distance From Home",
-            min_value=1,
-            max_value=30,
-            value=distance_from_home
+            1, 30,
+            distance_from_home
         )
 
         whatif_involvement = st.selectbox(
@@ -557,7 +648,7 @@ with tab1:
 
 
 # ============================================================
-# TAB 2 — MODEL VALIDATION
+# TAB 2
 # ============================================================
 
 with tab2:
@@ -568,45 +659,21 @@ with tab2:
 
     log_metrics = metrics["logistic_regression"]
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    c1, c2, c3, c4, c5 = st.columns(5)
 
-    with col1:
-        st.metric(
-            "Accuracy",
-            f"{log_metrics['accuracy']:.3f}"
-        )
-
-    with col2:
-        st.metric(
-            "Precision",
-            f"{log_metrics['precision']:.3f}"
-        )
-
-    with col3:
-        st.metric(
-            "Recall",
-            f"{log_metrics['recall']:.3f}"
-        )
-
-    with col4:
-        st.metric(
-            "F1 Score",
-            f"{log_metrics['f1_score']:.3f}"
-        )
-
-    with col5:
-        st.metric(
-            "ROC-AUC",
-            f"{log_metrics['roc_auc']:.3f}"
-        )
+    c1.metric("Accuracy", f"{log_metrics['accuracy']:.3f}")
+    c2.metric("Precision", f"{log_metrics['precision']:.3f}")
+    c3.metric("Recall", f"{log_metrics['recall']:.3f}")
+    c4.metric("F1 Score", f"{log_metrics['f1_score']:.3f}")
+    c5.metric("ROC-AUC", f"{log_metrics['roc_auc']:.3f}")
 
     st.write(
-        f"5-fold Cross-Validation Mean F1: "
+        f"5-fold CV Mean F1: "
         f"**{log_metrics['cv_mean_f1']:.3f}**"
     )
 
     st.write(
-        f"5-fold Cross-Validation Mean ROC-AUC: "
+        f"5-fold CV Mean ROC-AUC: "
         f"**{log_metrics['cv_mean_roc_auc']:.3f}**"
     )
 
@@ -633,42 +700,25 @@ with tab2:
 
     lin_metrics = metrics["linear_regression"]
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    with col1:
-
-        st.metric(
-            "R²",
-            f"{lin_metrics['r2']:.3f}"
-        )
-
-    with col2:
-
-        st.metric(
-            "MAE",
-            f"₹{lin_metrics['mae']:,.0f}"
-        )
-
-    with col3:
-
-        st.metric(
-            "RMSE",
-            f"₹{lin_metrics['rmse']:,.0f}"
-        )
+    c1.metric("R²", f"{lin_metrics['r2']:.3f}")
+    c2.metric("MAE", f"₹{lin_metrics['mae']:,.0f}")
+    c3.metric("RMSE", f"₹{lin_metrics['rmse']:,.0f}")
 
     st.write(
-        f"5-fold Cross-Validation Mean R²: "
+        f"5-fold CV Mean R²: "
         f"**{lin_metrics['cv_mean_r2']:.3f}**"
     )
 
     st.write(
-        f"5-fold Cross-Validation Mean MAE: "
+        f"5-fold CV Mean MAE: "
         f"**₹{lin_metrics['cv_mean_mae']:,.0f}**"
     )
 
 
 # ============================================================
-# TAB 3 — EMPLOYEE PROFILE
+# TAB 3
 # ============================================================
 
 with tab3:
@@ -682,10 +732,119 @@ with tab3:
         use_container_width=True
     )
 
-    st.caption(
-        "The values above represent the employee profile submitted "
-        "to the predictive models."
+
+# ============================================================
+# TAB 4 — GEMINI
+# ============================================================
+
+with tab4:
+
+    st.header("🤖 AI Manager Assistant")
+
+    st.markdown(
+        """
+        Ask questions about the current employee profile,
+        model predictions, or managerial interpretation.
+
+        **The predictive models generate the numerical predictions;
+        Gemini provides natural-language interpretation.**
+        """
     )
+
+    # --------------------------------------------------------
+    # Current model context
+    # --------------------------------------------------------
+
+    st.subheader("Current Model Context")
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "Attrition Probability",
+        f"{risk_percentage:.1f}%"
+    )
+
+    c2.metric(
+        "Risk Category",
+        risk_category
+    )
+
+    c3.metric(
+        "Predicted Monthly Income",
+        f"₹{predicted_income:,.0f}"
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # Suggested questions
+    # --------------------------------------------------------
+
+    st.subheader("Suggested Questions")
+
+    suggested_questions = [
+        "Explain this employee's attrition prediction in simple managerial language.",
+        "What aspects of this employee profile should a manager investigate?",
+        "What are the main limitations of this prediction?",
+        "How should I interpret the predicted monthly income?",
+        "What should a manager consider before acting on this prediction?"
+    ]
+
+    selected_question = st.selectbox(
+        "Choose a suggested question",
+        ["-- Select --"] + suggested_questions
+    )
+
+    # --------------------------------------------------------
+    # Manual question
+    # --------------------------------------------------------
+
+    question = st.text_area(
+        "Or ask your own question:",
+        placeholder=(
+            "Example: Why might this employee have a high "
+            "attrition probability?"
+        ),
+        height=120
+    )
+
+    if st.button(
+        "Ask Gemini",
+        type="primary"
+    ):
+
+        final_question = question.strip()
+
+        if not final_question:
+
+            if selected_question != "-- Select --":
+                final_question = selected_question
+
+        if not final_question:
+
+            st.warning(
+                "Please select a suggested question or "
+                "type your own question."
+            )
+
+        else:
+
+            with st.spinner(
+                "Gemini is analysing the employee profile..."
+            ):
+
+                answer = ask_gemini(
+                    final_question,
+                    input_data,
+                    attrition_probability,
+                    risk_category,
+                    predicted_income,
+                    metrics
+                )
+
+            st.markdown("### Gemini's Response")
+
+            st.markdown(answer)
 
 
 # ============================================================
@@ -696,6 +855,6 @@ st.divider()
 
 st.caption(
     "ABC Ltd. Predictive Analytics | "
-    "Logistic Regression + Linear Regression | "
-    "Decision-support tool for managerial use"
+    "Logistic Regression + Linear Regression + Generative AI | "
+    "Managerial Decision Support"
 )
