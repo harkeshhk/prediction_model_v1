@@ -76,7 +76,7 @@ except Exception as e:
 import requests
 import json
 
-def ask_gemini(question, employee_profile, attrition_probability,
+def ask_ai(question, employee_profile, attrition_probability,
                 risk_category, predicted_income, metrics):
     try:
         log_metrics = metrics["logistic_regression"]
