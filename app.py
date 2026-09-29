@@ -330,8 +330,8 @@ st.markdown(
 
 -------------------------------------------------------------------
 
-#### Model crafted by **Group 03**: Aiswarya, Harkesh, Kalpesh, Sakshi, Santhossh, Siddhant, Suman
-Under the guidance of **Prof. Janak Suthar**
+##### Model crafted by **Group 03**: Aiswarya, Harkesh, Kalpesh, Sakshi, Santhossh, Siddhant, Suman
+##### Under the guidance of **Prof. Janak Suthar**
 
 --------------------------------------------------------------------
 
