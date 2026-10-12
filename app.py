@@ -76,6 +76,13 @@ except Exception as e:
 import requests
 import json
 
+def read_secret(name, default=None):
+    try:
+        return st.secrets.get(name, default)
+    except Exception:
+        return default
+
+
 def ask_ai(question, employee_profile, attrition_probability,
                 risk_category, predicted_income, metrics):
     try:
@@ -133,8 +140,7 @@ Answer the manager's question structured using:
 """
 
         # Google Apps Script Web App URL
-        script_url = "https://script.google.com/macros/s/AKfycbwqQH3LYBYV2KddQ4ODmoLiVYBjwGow_3_d3aA0zFFZepNlh3CQ_bVtQTkPrWLdEJWU/exec"
-        
+        script_url = read_secret("script_url");
         # Pack data neatly into URL parameters for a GET request
         params = {
             "call": "askGemini",
